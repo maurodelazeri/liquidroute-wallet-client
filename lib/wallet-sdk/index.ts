@@ -155,6 +155,15 @@ export class LiquidRouteWallet {
 
       container.appendChild(iframe)
       document.body.appendChild(container)
+      
+      // Send initial message to establish connection after iframe loads
+      iframe.addEventListener('load', () => {
+        console.log('[WalletSDK] Iframe loaded, sending initial handshake')
+        iframe?.contentWindow?.postMessage(
+          { topic: 'client-hello', payload: { origin: window.location.origin } },
+          targetOrigin
+        )
+      })
 
       // Setup message listener for cross-domain communication
       const handleMessage = (event: MessageEvent) => {
