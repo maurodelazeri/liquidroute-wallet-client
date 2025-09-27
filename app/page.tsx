@@ -229,22 +229,51 @@ export default function HomePage() {
           </div>
         </div>
         
-        {/* Wallet Adapter Demo Link */}
-        <div className="max-w-2xl mx-auto mt-12 text-center">
-          <a
-            href="/wallet-adapter-demo"
-            className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-green-500 to-teal-500 text-white font-semibold rounded-xl hover:from-green-600 hover:to-teal-600 transition-all duration-200 shadow-lg transform hover:scale-105"
-          >
-            <span className="text-xl">🔌</span>
-            <span className="text-lg">Try Wallet Adapter Demo</span>
-            <span>→</span>
-          </a>
-          <p className="text-white/70 text-sm mt-4">
-            Works with standard Solana wallet-adapter framework
-          </p>
-          <p className="text-white/50 text-xs mt-2">
-            Just like Phantom, but with passkeys instead of seed phrases!
-          </p>
+        {/* Demo Links */}
+        <div className="max-w-4xl mx-auto mt-12">
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Interactive Demo */}
+            <a
+              href="/demo"
+              className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-600 to-pink-600 p-[1px] hover:scale-105 transition-all duration-200"
+            >
+              <div className="relative bg-black/90 backdrop-blur-xl rounded-xl p-6 h-full">
+                <div className="absolute inset-0 bg-gradient-to-br from-purple-600/10 to-pink-600/10" />
+                <div className="relative">
+                  <span className="text-4xl mb-4 block">🎨</span>
+                  <h3 className="text-xl font-bold text-white mb-2">Interactive Demo</h3>
+                  <p className="text-white/70 text-sm mb-4">
+                    Experience context-aware UI for swaps, NFTs, payments, and more
+                  </p>
+                  <div className="inline-flex items-center gap-2 text-white font-semibold">
+                    <span>Explore Features</span>
+                    <span className="group-hover:translate-x-1 transition-transform">→</span>
+                  </div>
+                </div>
+              </div>
+            </a>
+            
+            {/* Wallet Adapter Demo */}
+            <a
+              href="/wallet-adapter-demo"
+              className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-green-500 to-teal-500 p-[1px] hover:scale-105 transition-all duration-200"
+            >
+              <div className="relative bg-black/90 backdrop-blur-xl rounded-xl p-6 h-full">
+                <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-teal-500/10" />
+                <div className="relative">
+                  <span className="text-4xl mb-4 block">🔌</span>
+                  <h3 className="text-xl font-bold text-white mb-2">Wallet Adapter</h3>
+                  <p className="text-white/70 text-sm mb-4">
+                    Standard Solana wallet-adapter integration, works like Phantom
+                  </p>
+                  <div className="inline-flex items-center gap-2 text-white font-semibold">
+                    <span>Try Integration</span>
+                    <span className="group-hover:translate-x-1 transition-transform">→</span>
+                  </div>
+                </div>
+              </div>
+            </a>
+          </div>
         </div>
         
         {/* Technical Details */}
