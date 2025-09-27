@@ -115,7 +115,28 @@ export class LiquidRouteWallet {
 
       // Create iframe pointing to wallet on different domain
       iframe = document.createElement('iframe')
-      iframe.src = url
+      iframe.setAttribute('data-testid', 'liquidroute-wallet')
+      
+      // Configure WebAuthn permissions exactly like Porto
+      const walletOrigin = new URL(url).origin
+      const iframeAllow = [
+        `publickey-credentials-get ${walletOrigin}`,
+        `publickey-credentials-create ${walletOrigin}`,
+      ]
+      
+      // Add clipboard-write for non-Firefox browsers (like Porto)
+      const isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1
+      if (!isFirefox) iframeAllow.push('clipboard-write')
+      
+      iframe.setAttribute('allow', iframeAllow.join('; '))
+      iframe.setAttribute('tabindex', '0')
+      iframe.setAttribute(
+        'sandbox',
+        'allow-forms allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox',
+      )
+      iframe.setAttribute('src', url)
+      iframe.setAttribute('title', 'LiquidRoute Wallet')
+      
       iframe.style.cssText = `
         position: absolute;
         top: 50%;
@@ -130,11 +151,6 @@ export class LiquidRouteWallet {
         background: white;
         box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
       `
-      
-      // Set security attributes
-      iframe.setAttribute('sandbox', 
-        'allow-forms allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox'
-      )
 
       container.appendChild(iframe)
       document.body.appendChild(container)
