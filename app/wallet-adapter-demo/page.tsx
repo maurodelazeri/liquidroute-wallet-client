@@ -22,7 +22,7 @@ import { LiquidRouteWalletAdapter } from '@/lib/liquidroute-wallet-adapter'
 import '@solana/wallet-adapter-react-ui/styles.css'
 
 const WalletContent: FC = () => {
-  const { publicKey, signMessage, sendTransaction, connected, connecting } = useWallet()
+  const { publicKey, signMessage, sendTransaction, connected, connecting, wallet, disconnect } = useWallet()
   const [signature, setSignature] = useState<string>('')
   const [txSignature, setTxSignature] = useState<string>('')
   const [isProcessing, setIsProcessing] = useState(false)
@@ -106,9 +106,22 @@ const WalletContent: FC = () => {
           {connected && publicKey && (
             <div className="w-full space-y-6">
               <div className="bg-white/5 rounded-xl p-4">
-                <p className="text-white/70 text-sm mb-2">Connected Wallet</p>
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-white/70 text-sm">Connected Wallet</p>
+                  {wallet && (
+                    <div className="flex items-center gap-2">
+                      {wallet.adapter.icon && (
+                        <img src={wallet.adapter.icon} alt={wallet.adapter.name} className="w-5 h-5" />
+                      )}
+                      <span className="text-white text-sm font-medium">{wallet.adapter.name}</span>
+                    </div>
+                  )}
+                </div>
                 <p className="text-white font-mono text-sm break-all">
                   {publicKey.toBase58()}
+                </p>
+                <p className="text-white/50 text-xs mt-2">
+                  {wallet?.adapter.name === 'LiquidRoute Wallet' ? '🔐 Secured by Passkey (no seed phrase!)' : '🔑 Traditional wallet'}
                 </p>
               </div>
 

@@ -43,7 +43,8 @@ export class LiquidRouteWallet {
       preferPopup: config.preferPopup || false
     }
 
-    this.setupDialog()
+    // Don't create dialog in constructor - create it lazily when needed
+    // this.setupDialog()
   }
   
   private getDefaultHost(): string {
@@ -259,9 +260,25 @@ export class LiquidRouteWallet {
     const request: RpcRequest = { id, method, params }
     
     return new Promise((resolve, reject) => {
+      // Create and open dialog if not exists
+      if (!this.dialog) {
+        this.setupDialog()
+      }
+      
+      // Open dialog for connect, signMessage, signTransaction
+      const requiresUserInteraction = ['connect', 'signMessage', 'signTransaction'].includes(method)
+      if (requiresUserInteraction && this.dialog) {
+        this.dialog.open()
+      }
+      
       // Set up one-time response handler
       this.responseHandlers.set(id, (response: RpcResponse) => {
         this.responseHandlers.delete(id)
+        
+        // Close dialog after user interaction is complete
+        if (requiresUserInteraction && this.dialog) {
+          this.dialog.close()
+        }
         
         if (response.error) {
           reject(new Error(response.error.message))
