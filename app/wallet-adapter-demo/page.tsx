@@ -26,17 +26,20 @@ const WalletContent: FC = () => {
   const [signature, setSignature] = useState<string>('')
   const [txSignature, setTxSignature] = useState<string>('')
   const [isProcessing, setIsProcessing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleSignMessage = async () => {
     if (!publicKey || !signMessage) return
 
     try {
       setIsProcessing(true)
+      setError(null)
       const message = new TextEncoder().encode('Hello from LiquidRoute Cross-Domain Wallet!')
       const sig = await signMessage(message)
       setSignature(Buffer.from(sig).toString('base64'))
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error signing message:', error)
+      setError(error.message || 'Failed to sign message')
     } finally {
       setIsProcessing(false)
     }
@@ -47,6 +50,8 @@ const WalletContent: FC = () => {
 
     try {
       setIsProcessing(true)
+      setError(null)
+      setTxSignature('')
       
       // Create connection
       const connection = new Connection(
@@ -76,8 +81,21 @@ const WalletContent: FC = () => {
       await connection.confirmTransaction(signature)
       console.log('Transaction confirmed:', signature)
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error sending transaction:', error)
+      
+      // Parse error message for user-friendly display
+      let errorMessage = error.message || 'Failed to send transaction'
+      
+      if (errorMessage.includes('no record of a prior credit') || errorMessage.includes('Attempt to debit')) {
+        errorMessage = `Insufficient balance. Please add SOL to your wallet: ${publicKey?.toBase58()}`
+      } else if (errorMessage.includes('Simulation failed')) {
+        errorMessage = 'Transaction simulation failed. The wallet may not have enough SOL for fees.'
+      } else if (errorMessage.includes('blockhash')) {
+        errorMessage = 'Network error. Please try again.'
+      }
+      
+      setError(errorMessage)
     } finally {
       setIsProcessing(false)
     }
@@ -124,6 +142,20 @@ const WalletContent: FC = () => {
                   {wallet?.adapter.name === 'LiquidRoute Wallet' ? '🔐 Secured by Passkey (no seed phrase!)' : '🔑 Traditional wallet'}
                 </p>
               </div>
+
+              {/* Error display */}
+              {error && (
+                <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4">
+                  <p className="text-red-400 text-sm font-medium text-center">
+                    ⚠️ {error}
+                  </p>
+                  {error.includes('wallet:') && (
+                    <p className="text-red-400/70 text-xs font-mono text-center mt-2 break-all">
+                      {error.split('wallet: ')[1]}
+                    </p>
+                  )}
+                </div>
+              )}
 
               <div className="space-y-4">
                 <button
