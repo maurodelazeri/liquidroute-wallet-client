@@ -155,26 +155,24 @@ export class LiquidRouteWallet {
 
       container.appendChild(iframe)
       document.body.appendChild(container)
-      
-      // Send initial message to establish connection after iframe loads
-      iframe.addEventListener('load', () => {
-        console.log('[WalletSDK] Iframe loaded, sending initial handshake')
-        iframe?.contentWindow?.postMessage(
-          { topic: 'client-hello', payload: { origin: window.location.origin } },
-          targetOrigin
-        )
-      })
 
       // Setup message listener for cross-domain communication
       const handleMessage = (event: MessageEvent) => {
         // CRITICAL: Validate origin to ensure messages only from wallet domain
         if (event.origin !== targetOrigin) {
-          console.warn(`Rejected message from ${event.origin}, expected ${targetOrigin}`)
+          console.warn(`[WalletSDK] Rejected message from ${event.origin}, expected ${targetOrigin}`)
           return
         }
         
-        console.log('[WalletSDK] Received message:', event.data)
+        console.log('[WalletSDK] Received message from wallet:', event.data)
         
+        // Handle ready signal from wallet (Porto pattern)
+        if (event.data?.topic === 'ready') {
+          console.log('[WalletSDK] Wallet is ready with trustedHosts:', event.data.payload?.trustedHosts)
+          // Wallet is ready to receive RPC requests
+        }
+        
+        // Handle RPC responses
         if (event.data?.topic === 'rpc-response') {
           console.log('[WalletSDK] Processing rpc-response:', event.data.payload)
           walletInstance.handleResponse(event.data.payload)
@@ -244,7 +242,15 @@ export class LiquidRouteWallet {
         if (popup) {
           // Setup message listener
           const handleMessage = (event: MessageEvent) => {
+            // Only accept messages from wallet domain
             if (event.origin !== targetOrigin) return
+            
+            // Handle ready signal (Porto pattern)
+            if (event.data?.topic === 'ready') {
+              console.log('[WalletSDK] Wallet popup is ready')
+            }
+            
+            // Handle RPC responses
             if (event.data?.topic === 'rpc-response') {
               walletInstance.handleResponse(event.data.payload)
             }
