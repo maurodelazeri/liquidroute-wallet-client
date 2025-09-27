@@ -102,10 +102,10 @@ export class LiquidRouteWallet {
     const walletInstance = this // Capture wallet instance
 
     const setup = () => {
-      // Add Porto's animation keyframes if not already present
-      if (!document.getElementById('porto-animations')) {
+      // Add LiquidRoute animation keyframes if not already present
+      if (!document.getElementById('liquidroute-animations')) {
         const style = document.createElement('style')
-        style.id = 'porto-animations'
+        style.id = 'liquidroute-animations'
         style.textContent = `
           @keyframes fadeIn {
             from { opacity: 0; }
