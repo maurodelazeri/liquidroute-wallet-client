@@ -24,7 +24,6 @@ export default function HomePage() {
     
     const walletInstance = new LiquidRouteWallet({
       host: walletHost,
-      network: 'devnet',
       preferPopup: false // Use iframe by default
     })
     

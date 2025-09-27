@@ -13,10 +13,6 @@ export interface WalletConfig {
    */
   host?: string
   /**
-   * Network to connect to
-   */
-  network?: 'mainnet-beta' | 'testnet' | 'devnet'
-  /**
    * Whether to use popup instead of iframe
    */
   preferPopup?: boolean
@@ -44,7 +40,6 @@ export class LiquidRouteWallet {
     
     this.config = {
       host: config.host || defaultHost,
-      network: config.network || 'mainnet-beta',
       preferPopup: config.preferPopup || false
     }
 
@@ -316,9 +311,7 @@ export class LiquidRouteWallet {
       return this.publicKey
     }
 
-    const result = await this.sendRequest<{ publicKey: string }>('connect', {
-      network: this.config.network
-    })
+    const result = await this.sendRequest<{ publicKey: string }>('connect')
 
     this.publicKey = new PublicKey(result.publicKey)
     this.connected = true
