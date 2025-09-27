@@ -164,7 +164,10 @@ export class LiquidRouteWallet {
           return
         }
         
+        console.log('[WalletSDK] Received message:', event.data)
+        
         if (event.data?.topic === 'rpc-response') {
+          console.log('[WalletSDK] Processing rpc-response:', event.data.payload)
           walletInstance.handleResponse(event.data.payload)
         }
       }
@@ -273,10 +276,12 @@ export class LiquidRouteWallet {
       
       // Set up one-time response handler
       this.responseHandlers.set(id, (response: RpcResponse) => {
+        console.log(`[WalletSDK] Response handler called for ${method}, requiresUserInteraction: ${requiresUserInteraction}`)
         this.responseHandlers.delete(id)
         
         // Close dialog after user interaction is complete
         if (requiresUserInteraction && this.dialog) {
+          console.log('[WalletSDK] Closing dialog after user interaction')
           this.dialog.close()
         }
         
@@ -293,14 +298,19 @@ export class LiquidRouteWallet {
   }
 
   private handleResponse(response: RpcResponse) {
+    console.log('[WalletSDK] handleResponse called with:', response)
+    
     // Handle specific response handler
     const handler = this.responseHandlers.get(response.id)
     if (handler) {
+      console.log('[WalletSDK] Found handler for response ID:', response.id)
       handler(response)
+    } else {
+      console.warn('[WalletSDK] No handler found for response ID:', response.id)
     }
     
     // Handle events
-    switch (response._request.method) {
+    switch (response._request?.method) {
       case 'connect':
         if (response.result) {
           const { publicKey } = response.result as { publicKey: string }
