@@ -478,14 +478,15 @@ export class LiquidRouteWallet {
   /**
    * Sign a message
    */
-  async signMessage(message: Uint8Array): Promise<Uint8Array> {
+  async signMessage(message: Uint8Array, metadata?: any): Promise<Uint8Array> {
     if (!this.connected) {
       throw new Error('Wallet not connected')
     }
 
     const result = await this.sendRequest<{ signature: string }>('signMessage', {
       message: Buffer.from(message).toString('base64'),
-      display: 'utf8'
+      display: 'utf8',
+      metadata
     })
 
     return Buffer.from(result.signature, 'base64')
@@ -494,9 +495,19 @@ export class LiquidRouteWallet {
   /**
    * Sign a transaction
    */
-  async signTransaction(transaction: Transaction): Promise<Transaction> {
+  async signTransaction(transaction: Transaction | any): Promise<Transaction> {
     if (!this.connected) {
       throw new Error('Wallet not connected')
+    }
+
+    // Handle mock transactions with metadata for demos
+    if (transaction.metadata) {
+      const result = await this.sendRequest<{ signedTransaction: string }>('signTransaction', {
+        transaction: 'mock-transaction',
+        ...transaction
+      })
+
+      return Transaction.from(Buffer.from(result.signedTransaction || '', 'base64'))
     }
 
     // Serialize the transaction

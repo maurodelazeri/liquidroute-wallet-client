@@ -256,38 +256,43 @@ export default function DemoPage() {
     try {
       let result
       
-      // Send request based on scenario method
-      switch (scenario.params.method) {
-        case 'signMessage':
-          const messageData = (scenario.params.metadata as any)?.message || 'Test message'
-          const message = Buffer.from(messageData, 'base64')
-          result = await wallet.signMessage(message)
-          break
+      // For demo purposes, we'll use signMessage to trigger the wallet UI
+      // The wallet will show context-aware UI based on the metadata
+      // In production, you would build actual transactions
+      
+      if (scenario.params.method === 'signMessage') {
+        // Sign message scenario
+        const messageData = (scenario.params.metadata as any)?.message || 'Test message'
+        const message = Buffer.from(messageData, 'base64')
+        result = await wallet.signMessage(message)
+      } else {
+        // For all other scenarios, we'll sign a demo message
+        // The actual transaction building would happen in production
+        // This is just to demonstrate the UI without needing real transactions
         
-        case 'signTransaction':
-        case 'wallet_sendCalls':
-          // Create a mock transaction for demo
-          // In production, this would be a real transaction
-          const mockTx = {
-            recentBlockhash: 'mock-blockhash',
-            feePayer: new PublicKey(publicKey || '11111111111111111111111111111111'),
-            instructions: []
+        const demoMessage = `Demo: ${scenario.name}\n\n` +
+          `This is a demo of the ${scenario.name} feature.\n` +
+          `In production, this would be a real transaction.\n\n` +
+          `Details:\n` +
+          JSON.stringify(scenario.params.metadata, null, 2)
+        
+        // Pass metadata so wallet shows context-aware UI
+        result = await wallet.signMessage(
+          Buffer.from(demoMessage),
+          scenario.params.metadata
+        )
+        
+        // Show success with scenario details
+        setLastResult({ 
+          type: 'success', 
+          scenario: scenarioKey, 
+          result: {
+            signature: result,
+            message: 'Demo transaction signed successfully',
+            metadata: scenario.params.metadata
           }
-          
-          // For demo purposes, send a sign transaction request
-          // The wallet will show the appropriate UI based on metadata
-          result = await wallet.signTransaction({
-            ...mockTx,
-            metadata: scenario.params.metadata,
-            calls: (scenario.params as any).calls || []
-          } as any)
-          break
-        
-        default:
-          // For other methods, use signMessage as fallback
-          result = await wallet.signMessage(
-            Buffer.from('Demo transaction: ' + scenario.params.method)
-          )
+        })
+        return
       }
       
       setLastResult({ type: 'success', scenario: scenarioKey, result })
