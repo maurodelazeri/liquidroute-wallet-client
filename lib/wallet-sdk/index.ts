@@ -102,7 +102,20 @@ export class LiquidRouteWallet {
     const walletInstance = this // Capture wallet instance
 
     const setup = () => {
-      // Create container
+      // Add Porto's animation keyframes if not already present
+      if (!document.getElementById('porto-animations')) {
+        const style = document.createElement('style')
+        style.id = 'porto-animations'
+        style.textContent = `
+          @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+        `
+        document.head.appendChild(style)
+      }
+      
+      // Create container with Porto's exact overlay styling
       container = document.createElement('div')
       container.style.cssText = `
         position: fixed;
@@ -112,8 +125,8 @@ export class LiquidRouteWallet {
         bottom: 0;
         z-index: 2147483647;
         background: rgba(0, 0, 0, 0.5);
-        backdrop-filter: blur(4px);
         display: none;
+        animation: fadeIn 0.15s ease;
       `
 
       // Create iframe pointing to wallet on different domain
@@ -140,19 +153,17 @@ export class LiquidRouteWallet {
       // DON'T set src yet - set up listener first
       iframe.setAttribute('title', 'LiquidRoute Wallet')
       
+      // Porto-style iframe (transparent, UI handles the appearance)
       iframe.style.cssText = `
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: 440px;
-        max-width: 95vw;
-        height: 680px;
-        max-height: 95vh;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
         border: none;
-        border-radius: 16px;
-        background: white;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        background: transparent;
+        color-scheme: light dark;
+        z-index: 2147483648;
       `
 
       container.appendChild(iframe)
