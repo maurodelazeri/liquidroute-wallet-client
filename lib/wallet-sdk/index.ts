@@ -3,7 +3,7 @@
  * Client SDK for integrating the wallet into applications on different domains
  */
 
-import { PublicKey } from '@solana/web3.js'
+import { PublicKey, Transaction } from '@solana/web3.js'
 import type { RpcRequest, RpcResponse } from './types'
 
 export interface WalletConfig {
@@ -360,6 +360,39 @@ export class LiquidRouteWallet {
     })
 
     return Buffer.from(result.signature, 'base64')
+  }
+
+  /**
+   * Sign a transaction
+   */
+  async signTransaction(transaction: Transaction): Promise<Transaction> {
+    if (!this.connected) {
+      throw new Error('Wallet not connected')
+    }
+
+    // Serialize the transaction
+    const serialized = transaction.serialize({
+      requireAllSignatures: false,
+      verifySignatures: false
+    })
+
+    const result = await this.sendRequest<{ signedTransaction: string }>('signTransaction', {
+      transaction: Buffer.from(serialized).toString('base64')
+    })
+
+    // Deserialize the signed transaction
+    return Transaction.from(Buffer.from(result.signedTransaction, 'base64'))
+  }
+
+  /**
+   * Sign multiple transactions
+   */
+  async signAllTransactions(transactions: Transaction[]): Promise<Transaction[]> {
+    const signedTransactions: Transaction[] = []
+    for (const transaction of transactions) {
+      signedTransactions.push(await this.signTransaction(transaction))
+    }
+    return signedTransactions
   }
 
   /**

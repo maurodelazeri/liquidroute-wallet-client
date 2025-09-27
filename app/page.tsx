@@ -229,6 +229,24 @@ export default function HomePage() {
           </div>
         </div>
         
+        {/* Wallet Adapter Demo Link */}
+        <div className="max-w-2xl mx-auto mt-12 text-center">
+          <a
+            href="/wallet-adapter-demo"
+            className="inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-green-500 to-teal-500 text-white font-semibold rounded-xl hover:from-green-600 hover:to-teal-600 transition-all duration-200 shadow-lg transform hover:scale-105"
+          >
+            <span className="text-xl">🔌</span>
+            <span className="text-lg">Try Wallet Adapter Demo</span>
+            <span>→</span>
+          </a>
+          <p className="text-white/70 text-sm mt-4">
+            Works with standard Solana wallet-adapter framework
+          </p>
+          <p className="text-white/50 text-xs mt-2">
+            Just like Phantom, but with passkeys instead of seed phrases!
+          </p>
+        </div>
+        
         {/* Technical Details */}
         <div className="max-w-2xl mx-auto mt-8 text-center">
           <p className="text-white/60 text-sm">
