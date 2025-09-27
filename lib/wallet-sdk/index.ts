@@ -200,8 +200,10 @@ export class LiquidRouteWallet {
         console.log('[WalletSDK] Dialog close() called, isOpen:', isOpen)
         if (!isOpen) return
         isOpen = false
-        container!.style.display = 'none'
-        console.log('[WalletSDK] Dialog closed - container hidden')
+        if (container) {
+          container.style.display = 'none'
+          console.log('[WalletSDK] Dialog closed - container hidden')
+        }
       },
       destroy() {
         container?.remove()

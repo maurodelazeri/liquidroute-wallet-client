@@ -101,7 +101,9 @@ export class LiquidRouteWalletAdapter extends BaseMessageSignerWalletAdapter {
       }
 
       // Connect to the wallet (opens iframe/popup with passkey auth)
+      console.log('[LiquidRouteAdapter] Calling wallet.connect()')
       const publicKey = await this._wallet.connect()
+      console.log('[LiquidRouteAdapter] Wallet connected with publicKey:', publicKey?.toBase58())
       
       if (!publicKey) {
         throw new WalletPublicKeyError()
