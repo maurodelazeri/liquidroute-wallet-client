@@ -171,6 +171,23 @@ export class LiquidRouteWallet {
         if (topic === 'ready') {
           console.log('[WalletSDK] Wallet is ready:', payload)
           isReady = true
+          
+          // Porto pattern: Send __internal init message after ready
+          iframe?.contentWindow?.postMessage(
+            { 
+              topic: '__internal', 
+              payload: {
+                type: 'init',
+                mode: 'iframe',
+                referrer: {
+                  origin: window.location.origin,
+                  title: document.title || 'Solana App'
+                }
+              }
+            },
+            targetOrigin
+          )
+          
           // Execute any pending callbacks
           readyCallbacks.forEach(cb => cb())
           readyCallbacks.length = 0
@@ -220,11 +237,11 @@ export class LiquidRouteWallet {
         if (!iframe) setup()
         if (!isOpen) this.open()
         
-        // Wait for ready signal before sending request (Porto pattern)
+        // Porto uses 'rpc-requests' (plural) with array
         const send = () => {
-          console.log('[WalletSDK] Sending rpc-request to wallet:', request)
+          console.log('[WalletSDK] Sending rpc-requests to wallet:', request)
           iframe?.contentWindow?.postMessage(
-            { topic: 'rpc-request', payload: request },
+            { topic: 'rpc-requests', payload: [request] },  // Array of requests
             targetOrigin
           )
         }
@@ -271,6 +288,23 @@ export class LiquidRouteWallet {
             if (topic === 'ready') {
               console.log('[WalletSDK] Wallet popup is ready:', payload)
               isReady = true
+              
+              // Porto pattern: Send __internal init message after ready
+              popup?.postMessage(
+                { 
+                  topic: '__internal', 
+                  payload: {
+                    type: 'init',
+                    mode: 'popup',
+                    referrer: {
+                      origin: window.location.origin,
+                      title: document.title || 'Solana App'
+                    }
+                  }
+                },
+                targetOrigin
+              )
+              
               readyCallbacks.forEach(cb => cb())
               readyCallbacks.length = 0
             }
@@ -293,11 +327,11 @@ export class LiquidRouteWallet {
       sendRequest(request: RpcRequest) {
         if (!popup || popup.closed) this.open()
         
-        // Wait for ready signal before sending request (Porto pattern)
+        // Porto uses 'rpc-requests' (plural) with array
         const send = () => {
-          console.log('[WalletSDK] Sending rpc-request to popup:', request)
+          console.log('[WalletSDK] Sending rpc-requests to popup:', request)
           popup?.postMessage(
-            { topic: 'rpc-request', payload: request },
+            { topic: 'rpc-requests', payload: [request] },  // Array of requests
             targetOrigin
           )
         }
