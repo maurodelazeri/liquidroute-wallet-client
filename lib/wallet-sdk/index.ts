@@ -203,11 +203,13 @@ export class LiquidRouteWallet {
         if (!iframe) setup()
         if (!isOpen) this.open()
         
-        // Send request to wallet on different domain
-        iframe!.contentWindow?.postMessage(
-          { topic: 'rpc-request', payload: request },
-          targetOrigin
-        )
+      // Send request to wallet on different domain
+      console.log('[WalletSDK] Sending request to iframe at origin:', targetOrigin)
+      console.log('[WalletSDK] Request:', request)
+      iframe!.contentWindow?.postMessage(
+        { topic: 'rpc-request', payload: request },
+        targetOrigin
+      )
       }
     }
   }
