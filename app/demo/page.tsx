@@ -152,7 +152,8 @@ const DEMO_SCENARIOS = {
         to: 'HN7cABqLq46Es1jh92dQQisAq662SmxELLTPsB3xhrb5',
         amount: '0.1',
         token: { symbol: 'SOL' }
-      }
+      },
+      calls: []
     }
   },
   
@@ -163,10 +164,12 @@ const DEMO_SCENARIOS = {
     color: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
     params: {
       method: 'signMessage',
-      params: {
+      metadata: {
+        type: 'message',
         message: Buffer.from('Welcome to LiquidRoute! Sign this message to verify your wallet ownership.\n\nTimestamp: ' + new Date().toISOString()).toString('base64'),
         display: 'utf8'
-      }
+      },
+      calls: []
     }
   },
   
@@ -228,10 +231,10 @@ export default function DemoPage() {
   // Connect wallet
   const handleConnect = async () => {
     try {
-      const result = await wallet.connect()
+      const publicKeyResult = await wallet.connect()
       setIsConnected(true)
-      setPublicKey(result.publicKey)
-      setLastResult({ type: 'connect', result })
+      setPublicKey(publicKeyResult.toBase58())
+      setLastResult({ type: 'connect', result: publicKeyResult.toBase58() })
     } catch (error) {
       console.error('Connection failed:', error)
       setLastResult({ type: 'error', error: (error as any).message })
@@ -256,36 +259,35 @@ export default function DemoPage() {
       // Send request based on scenario method
       switch (scenario.params.method) {
         case 'signMessage':
-          result = await wallet.sendRequest({
-            method: 'signMessage',
-            params: scenario.params.params
-          })
+          const messageData = (scenario.params.metadata as any)?.message || 'Test message'
+          const message = Buffer.from(messageData, 'base64')
+          result = await wallet.signMessage(message)
           break
         
         case 'signTransaction':
-          // Create a simple transfer transaction
-          const tx = {
-            // Simplified - would need actual transaction building
-            transaction: Buffer.from(new Uint8Array(100)).toString('base64')
-          }
-          result = await wallet.sendRequest({
-            method: 'signTransaction',
-            params: { ...tx, ...scenario.params }
-          })
-          break
-        
         case 'wallet_sendCalls':
-          result = await wallet.sendRequest({
-            method: 'wallet_sendCalls',
-            params: [scenario.params]
-          })
+          // Create a mock transaction for demo
+          // In production, this would be a real transaction
+          const mockTx = {
+            recentBlockhash: 'mock-blockhash',
+            feePayer: new PublicKey(publicKey || '11111111111111111111111111111111'),
+            instructions: []
+          }
+          
+          // For demo purposes, send a sign transaction request
+          // The wallet will show the appropriate UI based on metadata
+          result = await wallet.signTransaction({
+            ...mockTx,
+            metadata: scenario.params.metadata,
+            calls: (scenario.params as any).calls || []
+          } as any)
           break
         
         default:
-          result = await wallet.sendRequest({
-            method: scenario.params.method,
-            params: scenario.params
-          })
+          // For other methods, use signMessage as fallback
+          result = await wallet.signMessage(
+            Buffer.from('Demo transaction: ' + scenario.params.method)
+          )
       }
       
       setLastResult({ type: 'success', scenario: scenarioKey, result })
