@@ -257,6 +257,9 @@ export class LiquidRouteWallet {
 
   private createPopupDialog(url: string): Dialog {
     let popup: Window | null = null
+    let messenger: any = null
+    let isReady = false
+    const readyCallbacks: Function[] = []
     const targetOrigin = new URL(url).origin
     const walletInstance = this // Capture wallet instance
 
@@ -274,22 +277,49 @@ export class LiquidRouteWallet {
         )
 
         if (popup) {
-          // Setup message listener
-          const handleMessage = (event: MessageEvent) => {
-            // Only accept messages from wallet domain
-            if (event.origin !== targetOrigin) return
-            
-            // Handle ready signal (Porto pattern)
-            if (event.data?.topic === 'ready') {
-              console.log('[WalletSDK] Wallet popup is ready')
-            }
-            
-            // Handle RPC responses
-            if (event.data?.topic === 'rpc-response') {
-              walletInstance.handleResponse(event.data.payload)
+          // Porto pattern: Create messenger for popup
+          const fromMessenger = {
+            on(topic: string, handler: Function) {
+              const listener = (event: MessageEvent) => {
+                if (event.origin !== targetOrigin) return
+                if (event.data?.topic === topic) {
+                  handler(event.data.payload, event)
+                }
+              }
+              window.addEventListener('message', listener)
+              return () => window.removeEventListener('message', listener)
+            },
+            send(topic: string, payload: any) {
+              // Parent sends to itself - not used
             }
           }
-          window.addEventListener('message', handleMessage)
+          
+          const toMessenger = {
+            send(topic: string, payload: any) {
+              console.log(`[WalletSDK] Sending ${topic} to popup:`, payload)
+              popup?.postMessage(
+                { topic, payload },
+                targetOrigin
+              )
+            }
+          }
+          
+          // Listen for ready signal
+          fromMessenger.on('ready', (payload: any) => {
+            console.log('[WalletSDK] Wallet popup is ready:', payload)
+            isReady = true
+            // Execute any pending callbacks
+            readyCallbacks.forEach(cb => cb())
+            readyCallbacks.length = 0
+          })
+          
+          // Listen for RPC responses
+          fromMessenger.on('rpc-response', (payload: any) => {
+            console.log('[WalletSDK] Received rpc-response from popup:', payload)
+            walletInstance.handleResponse(payload)
+          })
+          
+          messenger = { from: fromMessenger, to: toMessenger }
         }
       },
       close() {
@@ -300,10 +330,19 @@ export class LiquidRouteWallet {
       },
       sendRequest(request: RpcRequest) {
         if (!popup || popup.closed) this.open()
-        popup?.postMessage(
-          { topic: 'rpc-request', payload: request },
-          targetOrigin
-        )
+        
+        // Wait for ready signal before sending request (Porto pattern)
+        const send = () => {
+          console.log('[WalletSDK] Sending rpc-request to popup:', request)
+          messenger?.to.send('rpc-request', request)
+        }
+        
+        if (isReady) {
+          send()
+        } else {
+          console.log('[WalletSDK] Waiting for popup ready signal...')
+          readyCallbacks.push(send)
+        }
       }
     }
   }
