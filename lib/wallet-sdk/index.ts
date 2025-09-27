@@ -52,7 +52,9 @@ export class LiquidRouteWallet {
   }
   
   private getDefaultHost(): string {
-    // In production, this would be your wallet domain (different from app domain)
+    // Production configuration:
+    // - App domain: solanavalidators.xyz
+    // - Wallet domain: wallet.liquidroute.com (completely different domain)
     if (typeof window !== 'undefined') {
       const isLocalhost = window.location.hostname === 'localhost' || 
                          window.location.hostname === '127.0.0.1'
@@ -63,10 +65,8 @@ export class LiquidRouteWallet {
       }
     }
     
-    // Production: your wallet domain (completely different domain)
-    // Examples:
-    // - App at: app.uniswap.org
-    // - Wallet at: wallet.liquidroute.com
+    // Production: wallet at wallet.liquidroute.com
+    // This app will be at solanavalidators.xyz
     return process.env.NEXT_PUBLIC_WALLET_HOST || 'https://wallet.liquidroute.com'
   }
 

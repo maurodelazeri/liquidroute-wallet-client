@@ -12,14 +12,13 @@ export default function HomePage() {
   
   // Initialize wallet on mount
   useEffect(() => {
-    // In production, the wallet will be on a COMPLETELY DIFFERENT domain
-    // Examples:
-    // - Your app: https://app.uniswap.org
-    // - Wallet: https://wallet.liquidroute.com
+    // Production configuration:
+    // - This app: https://solanavalidators.xyz
+    // - Wallet: https://wallet.liquidroute.com (completely different domain)
     const walletHost = process.env.NEXT_PUBLIC_WALLET_HOST || 
       (typeof window !== 'undefined' && window.location.hostname === 'localhost' 
         ? 'http://localhost:3001'  // Development: different port
-        : 'https://wallet.liquidroute.com') // Production: completely different domain
+        : 'https://wallet.liquidroute.com') // Production: wallet domain
     
     console.log('Initializing wallet connection to:', walletHost)
     
@@ -94,13 +93,21 @@ export default function HomePage() {
             LiquidRoute Cross-Domain Wallet Demo
           </h1>
           <p className="text-xl text-white/80">
-            This app is on <span className="font-mono bg-white/10 px-2 py-1 rounded">localhost:3000</span>
+            This app: <span className="font-mono bg-white/10 px-2 py-1 rounded">
+              {typeof window !== 'undefined' && window.location.hostname === 'localhost' 
+                ? 'localhost:3000' 
+                : 'solanavalidators.xyz'}
+            </span>
           </p>
           <p className="text-xl text-white/80 mt-2">
-            Wallet is on <span className="font-mono bg-white/10 px-2 py-1 rounded">localhost:3001</span>
+            Wallet: <span className="font-mono bg-white/10 px-2 py-1 rounded">
+              {typeof window !== 'undefined' && window.location.hostname === 'localhost' 
+                ? 'localhost:3001' 
+                : 'wallet.liquidroute.com'}
+            </span>
           </p>
           <p className="text-sm text-white/60 mt-4">
-            In production, these would be completely different domains (e.g., app.uniswap.org and wallet.liquidroute.com)
+            Production: solanavalidators.xyz communicates with wallet.liquidroute.com
           </p>
         </div>
         
@@ -207,11 +214,19 @@ export default function HomePage() {
         <div className="max-w-2xl mx-auto mt-12 bg-white/5 backdrop-blur-lg rounded-xl p-6">
           <h3 className="text-white font-semibold mb-4">🏗️ Cross-Domain Architecture</h3>
           <div className="space-y-2 text-white/70 text-sm">
-            <p>✅ App Domain: <span className="font-mono">{typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}</span></p>
-            <p>✅ Wallet Domain: <span className="font-mono">http://localhost:3001</span></p>
+            <p>✅ App Domain: <span className="font-mono">
+              {typeof window !== 'undefined' 
+                ? window.location.origin 
+                : 'https://solanavalidators.xyz'}
+            </span></p>
+            <p>✅ Wallet Domain: <span className="font-mono">
+              {typeof window !== 'undefined' && window.location.hostname === 'localhost'
+                ? 'http://localhost:3001'
+                : 'https://wallet.liquidroute.com'}
+            </span></p>
             <p>✅ Communication: Secure postMessage API</p>
             <p>✅ No CORS issues - using iframe + postMessage</p>
-            <p>✅ Production ready for completely different domains</p>
+            <p>✅ Production: solanavalidators.xyz ↔️ wallet.liquidroute.com</p>
           </div>
         </div>
         
