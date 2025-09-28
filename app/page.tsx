@@ -164,7 +164,7 @@ export default function Home() {
         </h1>
         
         <p style={{ fontSize: '1.125rem', color: '#6b7280', marginBottom: '2rem' }}>
-          Test the Porto-based cross-domain wallet integration
+          Test the Porto-based cross-domain wallet integration with passkeys
         </p>
 
         {/* Wallet Status */}
