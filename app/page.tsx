@@ -353,7 +353,7 @@ export default function Home() {
               height: '600px',
               border: 'none',
               borderRadius: '24px',
-              backgroundColor: 'white'
+              backgroundColor: 'transparent'
             }}
             allow="publickey-credentials-get; publickey-credentials-create; clipboard-write"
             sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
