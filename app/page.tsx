@@ -349,11 +349,12 @@ export default function Home() {
             src={`${process.env.NEXT_PUBLIC_WALLET_HOST || 'https://wallet.liquidroute.com'}/wallet`}
             style={{
               width: '100%',
-              maxWidth: '500px',
+              maxWidth: '440px',
               height: '600px',
               border: 'none',
               borderRadius: '24px',
-              backgroundColor: 'transparent'
+              backgroundColor: 'white',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
             }}
             allow="publickey-credentials-get; publickey-credentials-create; clipboard-write"
             sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
