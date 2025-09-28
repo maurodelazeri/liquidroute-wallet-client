@@ -1,289 +1,365 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { LiquidRouteWallet } from '@/lib/wallet-sdk'
+import { useState, useCallback, useEffect } from 'react'
 
-export default function HomePage() {
-  const [wallet, setWallet] = useState<LiquidRouteWallet | null>(null)
+export default function Home() {
+  const [walletConnected, setWalletConnected] = useState(false)
   const [publicKey, setPublicKey] = useState<string | null>(null)
-  const [isConnecting, setIsConnecting] = useState(false)
-  const [message, setMessage] = useState('')
-  const [signature, setSignature] = useState<string | null>(null)
-  
-  // Initialize wallet on mount
+  const [status, setStatus] = useState<string>('')
+  const [iframeVisible, setIframeVisible] = useState(false)
+  const [currentRequest, setCurrentRequest] = useState<string | null>(null)
+
+  // Setup message listener for wallet responses
   useEffect(() => {
-    // Production configuration:
-    // - This app: https://solanavalidators.xyz
-    // - Wallet: https://wallet.liquidroute.com (completely different domain)
-    const walletHost = process.env.NEXT_PUBLIC_WALLET_HOST || 
-      (typeof window !== 'undefined' && window.location.hostname === 'localhost' 
-        ? 'http://localhost:3001'  // Development: different port
-        : 'https://wallet.liquidroute.com') // Production: wallet domain
-    
-    console.log('Initializing wallet connection to:', walletHost)
-    
-    const walletInstance = new LiquidRouteWallet({
-      host: walletHost,
-      preferPopup: false // Use iframe by default
-    })
-    
-    // Listen for wallet events
-    walletInstance.on('connect', (pubKey: any) => {
-      console.log('Wallet connected:', pubKey.toString())
-      setPublicKey(pubKey.toString())
-    })
-    
-    walletInstance.on('disconnect', () => {
-      console.log('Wallet disconnected')
-      setPublicKey(null)
-    })
-    
-    setWallet(walletInstance)
-    
-    return () => {
-      walletInstance.destroy()
+    const handleMessage = (event: MessageEvent) => {
+      // Validate origin
+      if (event.origin !== 'https://wallet.liquidroute.com' && 
+          event.origin !== 'http://localhost:3001') {
+        return
+      }
+
+      const { data } = event
+      
+      if (data?.topic === 'ready') {
+        console.log('Wallet iframe ready')
+        // Send init message
+        const iframe = document.getElementById('wallet-iframe') as HTMLIFrameElement
+        if (iframe?.contentWindow) {
+          iframe.contentWindow.postMessage({
+            type: '__internal',
+            topic: 'init'
+          }, '*')
+        }
+        return
+      }
+
+      if (data?.topic === 'rpc-response' && data?.payload) {
+        const { result, error } = data.payload
+        
+        if (error) {
+          setStatus(`Error: ${error}`)
+          setIframeVisible(false)
+          setCurrentRequest(null)
+          return
+        }
+
+        // Handle different response types
+        if (currentRequest === 'connect' && result?.publicKey) {
+          setPublicKey(result.publicKey)
+          setWalletConnected(true)
+          setStatus('Wallet connected successfully!')
+          setIframeVisible(false)
+          setCurrentRequest(null)
+        } else if (currentRequest === 'signMessage' && result?.signature) {
+          setStatus(`Message signed! Signature: ${result.signature.slice(0, 20)}...`)
+          setIframeVisible(false)
+          setCurrentRequest(null)
+        } else if (currentRequest === 'signTransaction' && result?.signature) {
+          setStatus(`Transaction signed! Signature: ${result.signature.slice(0, 20)}...`)
+          setIframeVisible(false)
+          setCurrentRequest(null)
+        } else if (currentRequest === 'disconnect' && result?.disconnected) {
+          setPublicKey(null)
+          setWalletConnected(false)
+          setStatus('Wallet disconnected')
+          setIframeVisible(false)
+          setCurrentRequest(null)
+        }
+      }
+    }
+
+    window.addEventListener('message', handleMessage)
+    return () => window.removeEventListener('message', handleMessage)
+  }, [currentRequest])
+
+  const sendWalletRequest = useCallback((method: string, params?: any) => {
+    const iframe = document.getElementById('wallet-iframe') as HTMLIFrameElement
+    if (iframe?.contentWindow) {
+      const request = {
+        id: Date.now().toString(),
+        method,
+        params
+      }
+      
+      iframe.contentWindow.postMessage({
+        topic: 'rpc-requests',
+        payload: [request]
+      }, '*')
+      
+      setCurrentRequest(method)
     }
   }, [])
-  
-  async function handleConnect() {
-    if (!wallet) return
+
+  const connectWallet = useCallback(() => {
+    setStatus('Connecting wallet...')
+    setIframeVisible(true)
+    setCurrentRequest('connect')
     
-    setIsConnecting(true)
-    try {
-      const pubKey = await wallet.connect()
-      setPublicKey(pubKey.toString())
-    } catch (error) {
-      console.error('Failed to connect:', error)
-    } finally {
-      setIsConnecting(false)
+    // Wait for iframe to load then send request
+    setTimeout(() => {
+      sendWalletRequest('connect')
+    }, 500)
+  }, [sendWalletRequest])
+
+  const disconnectWallet = useCallback(() => {
+    sendWalletRequest('disconnect')
+  }, [sendWalletRequest])
+
+  const signMessage = useCallback(() => {
+    if (!walletConnected) {
+      setStatus('Please connect wallet first')
+      return
     }
-  }
-  
-  async function handleDisconnect() {
-    if (!wallet) return
     
-    try {
-      await wallet.disconnect()
-      setPublicKey(null)
-      setSignature(null)
-    } catch (error) {
-      console.error('Failed to disconnect:', error)
-    }
-  }
-  
-  async function handleSignMessage() {
-    if (!wallet || !message) return
+    setStatus('Signing message...')
+    setIframeVisible(true)
     
-    try {
-      const messageBytes = new TextEncoder().encode(message)
-      const sig = await wallet.signMessage(messageBytes)
-      setSignature(Buffer.from(sig).toString('base64'))
-    } catch (error) {
-      console.error('Failed to sign message:', error)
+    // Wait for iframe to be ready
+    setTimeout(() => {
+      sendWalletRequest('signMessage', {
+        message: Buffer.from('Hello from LiquidRoute Client!').toString('base64')
+      })
+    }, 300)
+  }, [walletConnected, sendWalletRequest])
+
+  const signTransaction = useCallback(() => {
+    if (!walletConnected) {
+      setStatus('Please connect wallet first')
+      return
     }
-  }
+    
+    setStatus('Signing transaction...')
+    setIframeVisible(true)
+    
+    // Wait for iframe to be ready
+    setTimeout(() => {
+      sendWalletRequest('signTransaction', {
+        // Mock transaction data for demo
+        transaction: 'mock-transaction-data'
+      })
+    }, 300)
+  }, [walletConnected, sendWalletRequest])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-purple-900 to-pink-900">
-      <div className="container mx-auto px-4 py-16">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold text-white mb-4">
-            LiquidRoute Cross-Domain Wallet Demo
-          </h1>
-          <p className="text-xl text-white/80">
-            This app: <span className="font-mono bg-white/10 px-2 py-1 rounded">
-              {typeof window !== 'undefined' && window.location.hostname === 'localhost' 
-                ? 'localhost:3000' 
-                : 'solanavalidators.xyz'}
-            </span>
-          </p>
-          <p className="text-xl text-white/80 mt-2">
-            Wallet: <span className="font-mono bg-white/10 px-2 py-1 rounded">
-              {typeof window !== 'undefined' && window.location.hostname === 'localhost' 
-                ? 'localhost:3001' 
-                : 'wallet.liquidroute.com'}
-            </span>
-          </p>
-          <p className="text-sm text-white/60 mt-4">
-            Production: solanavalidators.xyz communicates with wallet.liquidroute.com
-          </p>
-        </div>
+    <div style={{
+      minHeight: '100vh',
+      backgroundColor: '#f9fafb',
+      padding: '2rem',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+    }}>
+      <div style={{
+        maxWidth: '800px',
+        margin: '0 auto'
+      }}>
+        <h1 style={{
+          fontSize: '2.5rem',
+          fontWeight: 'bold',
+          marginBottom: '1rem',
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          WebkitBackgroundClip: 'text',
+          WebkitTextFillColor: 'transparent',
+          backgroundClip: 'text'
+        }}>
+          LiquidRoute Wallet Demo
+        </h1>
         
-        {/* Main Card */}
-        <div className="max-w-2xl mx-auto bg-white/10 backdrop-blur-lg rounded-3xl shadow-2xl p-8">
-          {/* Connection Status */}
-          <div className="flex items-center justify-between mb-8 pb-6 border-b border-white/20">
-            <div className="flex items-center gap-3">
-              <div className={`w-3 h-3 rounded-full ${publicKey ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`} />
-              <span className="text-white font-semibold">
-                {publicKey ? 'Connected' : 'Disconnected'}
+        <p style={{ fontSize: '1.125rem', color: '#6b7280', marginBottom: '2rem' }}>
+          Test the Porto-based cross-domain wallet integration
+        </p>
+
+        {/* Wallet Status */}
+        <div style={{
+          padding: '1.5rem',
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+          marginBottom: '2rem'
+        }}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '1rem' }}>
+            Wallet Status
+          </h2>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <div style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                backgroundColor: walletConnected ? '#22c55e' : '#ef4444'
+              }} />
+              <span style={{ fontSize: '0.875rem', fontWeight: '500' }}>
+                {walletConnected ? 'Connected' : 'Disconnected'}
               </span>
             </div>
             
             {publicKey && (
-              <button
-                onClick={handleDisconnect}
-                className="text-white/70 hover:text-white transition-colors"
-              >
-                Disconnect
-              </button>
+              <div style={{
+                padding: '0.75rem',
+                backgroundColor: '#f3f4f6',
+                borderRadius: '8px',
+                fontFamily: 'monospace',
+                fontSize: '0.875rem',
+                wordBreak: 'break-all'
+              }}>
+                {publicKey.slice(0, 20)}...{publicKey.slice(-20)}
+              </div>
+            )}
+            
+            {status && (
+              <div style={{
+                padding: '0.75rem',
+                backgroundColor: status.includes('Error') ? '#fee2e2' : '#dcfce7',
+                color: status.includes('Error') ? '#dc2626' : '#166534',
+                borderRadius: '8px',
+                fontSize: '0.875rem'
+              }}>
+                {status}
+              </div>
             )}
           </div>
+        </div>
+
+        {/* Actions */}
+        <div style={{
+          padding: '1.5rem',
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+        }}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: '600', marginBottom: '1rem' }}>
+            Actions
+          </h2>
           
-          {!publicKey ? (
-            // Connect Section
-            <div className="text-center py-12">
-              <div className="w-24 h-24 mx-auto mb-6 bg-white/20 rounded-full flex items-center justify-center">
-                <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                    d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-              </div>
-              
-              <h2 className="text-2xl font-bold text-white mb-3">
-                Connect Your Wallet
-              </h2>
-              
-              <p className="text-white/70 mb-8">
-                Click below to connect your wallet via secure cross-domain iframe
-              </p>
-              
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem' }}>
+            {!walletConnected ? (
               <button
-                onClick={handleConnect}
-                disabled={isConnecting}
-                className="px-8 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold rounded-xl hover:from-purple-600 hover:to-pink-600 transition-all duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={connectWallet}
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  backgroundColor: '#6366f1',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '1rem',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#5558e3'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = '#6366f1'
+                }}
               >
-                {isConnecting ? 'Connecting...' : 'Connect Wallet'}
+                Connect Wallet
               </button>
-              
-              <p className="text-white/50 text-xs mt-6">
-                This will open an iframe to the wallet domain and communicate via postMessage
-              </p>
-            </div>
-          ) : (
-            // Connected Section
-            <div className="space-y-6">
-              {/* Wallet Info */}
-              <div className="bg-white/10 rounded-xl p-4">
-                <p className="text-white/70 text-sm mb-2">Connected Address</p>
-                <p className="text-white font-mono text-sm break-all">
-                  {publicKey}
-                </p>
-              </div>
-              
-              {/* Sign Message */}
-              <div className="bg-white/10 rounded-xl p-6">
-                <h3 className="text-lg font-semibold text-white mb-4">
-                  Sign Message
-                </h3>
+            ) : (
+              <>
+                <button
+                  onClick={disconnectWallet}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    backgroundColor: '#ef4444',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '1rem',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#dc2626'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#ef4444'
+                  }}
+                >
+                  Disconnect
+                </button>
                 
-                <div className="space-y-4">
-                  <textarea
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    placeholder="Enter message to sign..."
-                    className="w-full p-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:border-white/40"
-                    rows={3}
-                  />
-                  
-                  <button
-                    onClick={handleSignMessage}
-                    disabled={!message}
-                    className="w-full py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold rounded-xl hover:from-purple-600 hover:to-pink-600 transition-all duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Sign Message
-                  </button>
-                  
-                  {signature && (
-                    <div className="mt-4 p-3 bg-green-500/20 border border-green-500/30 rounded-lg">
-                      <p className="text-green-400 text-sm mb-2">Signature:</p>
-                      <p className="text-white font-mono text-xs break-all">
-                        {signature}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-        
-        {/* Architecture Info */}
-        <div className="max-w-2xl mx-auto mt-12 bg-white/5 backdrop-blur-lg rounded-xl p-6">
-          <h3 className="text-white font-semibold mb-4">🏗️ Cross-Domain Architecture</h3>
-          <div className="space-y-2 text-white/70 text-sm">
-            <p>✅ App Domain: <span className="font-mono">
-              {typeof window !== 'undefined' 
-                ? window.location.origin 
-                : 'https://solanavalidators.xyz'}
-            </span></p>
-            <p>✅ Wallet Domain: <span className="font-mono">
-              {typeof window !== 'undefined' && window.location.hostname === 'localhost'
-                ? 'http://localhost:3001'
-                : 'https://wallet.liquidroute.com'}
-            </span></p>
-            <p>✅ Communication: Secure postMessage API</p>
-            <p>✅ No CORS issues - using iframe + postMessage</p>
-            <p>✅ Production: solanavalidators.xyz ↔️ wallet.liquidroute.com</p>
+                <button
+                  onClick={signMessage}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    backgroundColor: '#22c55e',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '1rem',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#16a34a'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#22c55e'
+                  }}
+                >
+                  Sign Message
+                </button>
+                
+                <button
+                  onClick={signTransaction}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    backgroundColor: '#f59e0b',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '1rem',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#d97706'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = '#f59e0b'
+                  }}
+                >
+                  Sign Transaction
+                </button>
+              </>
+            )}
           </div>
-        </div>
-        
-        {/* Demo Links */}
-        <div className="max-w-4xl mx-auto mt-12">
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* Interactive Demo */}
-            <a
-              href="/demo"
-              className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-purple-600 to-pink-600 p-[1px] hover:scale-105 transition-all duration-200"
-            >
-              <div className="relative bg-black/90 backdrop-blur-xl rounded-xl p-6 h-full">
-                <div className="absolute inset-0 bg-gradient-to-br from-purple-600/10 to-pink-600/10" />
-                <div className="relative">
-                  <span className="text-4xl mb-4 block">🎨</span>
-                  <h3 className="text-xl font-bold text-white mb-2">Interactive Demo</h3>
-                  <p className="text-white/70 text-sm mb-4">
-                    Experience context-aware UI for swaps, NFTs, payments, and more
-                  </p>
-                  <div className="inline-flex items-center gap-2 text-white font-semibold">
-                    <span>Explore Features</span>
-                    <span className="group-hover:translate-x-1 transition-transform">→</span>
-                  </div>
-                </div>
-              </div>
-            </a>
-            
-            {/* Wallet Adapter Demo */}
-            <a
-              href="/wallet-adapter-demo"
-              className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-green-500 to-teal-500 p-[1px] hover:scale-105 transition-all duration-200"
-            >
-              <div className="relative bg-black/90 backdrop-blur-xl rounded-xl p-6 h-full">
-                <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-teal-500/10" />
-                <div className="relative">
-                  <span className="text-4xl mb-4 block">🔌</span>
-                  <h3 className="text-xl font-bold text-white mb-2">Wallet Adapter</h3>
-                  <p className="text-white/70 text-sm mb-4">
-                    Standard Solana wallet-adapter integration, works like Phantom
-                  </p>
-                  <div className="inline-flex items-center gap-2 text-white font-semibold">
-                    <span>Try Integration</span>
-                    <span className="group-hover:translate-x-1 transition-transform">→</span>
-                  </div>
-                </div>
-              </div>
-            </a>
-          </div>
-        </div>
-        
-        {/* Technical Details */}
-        <div className="max-w-2xl mx-auto mt-8 text-center">
-          <p className="text-white/60 text-sm">
-            This architecture allows the wallet to be hosted on a completely different domain
-            (like Porto&apos;s id.porto.sh) and be used by any trusted application.
-          </p>
         </div>
       </div>
+
+      {/* Hidden iframe for wallet */}
+      {iframeVisible && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999
+        }}>
+          <iframe
+            id="wallet-iframe"
+            src={process.env.NEXT_PUBLIC_WALLET_HOST || 'https://wallet.liquidroute.com/wallet'}
+            style={{
+              width: '100%',
+              maxWidth: '500px',
+              height: '600px',
+              border: 'none',
+              borderRadius: '24px',
+              backgroundColor: 'white'
+            }}
+            allow="publickey-credentials-get; publickey-credentials-create; clipboard-write"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+          />
+        </div>
+      )}
     </div>
   )
 }
