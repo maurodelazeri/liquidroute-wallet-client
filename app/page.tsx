@@ -346,7 +346,7 @@ export default function Home() {
         }}>
           <iframe
             id="wallet-iframe"
-            src={process.env.NEXT_PUBLIC_WALLET_HOST || 'https://wallet.liquidroute.com/wallet'}
+            src={`${process.env.NEXT_PUBLIC_WALLET_HOST || 'https://wallet.liquidroute.com'}/wallet`}
             style={{
               width: '100%',
               maxWidth: '500px',
